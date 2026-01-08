@@ -1,0 +1,183 @@
+--====================================================
+-- 🔒 WHITELIST (DO NOT REMOVE)
+--====================================================
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local WHITELIST = {
+    [5222600269] = true
+}
+
+if not WHITELIST[player.UserId] then
+    warn("Polli Speed | Access denied:", player.UserId)
+    return
+end
+
+--====================================================
+-- Services
+--====================================================
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local HRP = character:WaitForChild("HumanoidRootPart")
+
+--====================================================
+-- Utils
+--====================================================
+local function rStr(l)
+    local c = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    local s = ""
+    for i = 1, l do
+        s ..= c:sub(math.random(#c), math.random(#c))
+    end
+    return s
+end
+
+local function tween(obj, props, time, style)
+    if not obj then return end
+    TweenService:Create(
+        obj,
+        TweenInfo.new(time or 0.3, style or Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        props
+    ):Play()
+end
+
+--====================================================
+-- UI
+--====================================================
+local gui = Instance.new("ScreenGui")
+gui.Name = rStr(12)
+gui.ResetOnSpawn = false
+gui.Parent = game.CoreGui
+
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.fromOffset(350, 200)
+main.Position = UDim2.new(0.5, -175, 0.5, -100)
+main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+main.BorderSizePixel = 0
+main.Active = true
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 14)
+
+local stroke = Instance.new("UIStroke", main)
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(90, 130, 255)
+
+--====================================================
+-- Top Bar
+--====================================================
+local topBar = Instance.new("Frame", main)
+topBar.Size = UDim2.new(1, 0, 0, 50)
+topBar.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+topBar.BorderSizePixel = 0
+Instance.new("UICorner", topBar).CornerRadius = UDim.new(0, 14)
+
+local titleShadow = Instance.new("TextLabel", topBar)
+titleShadow.Size = UDim2.new(1, -20, 1, 0)
+titleShadow.Position = UDim2.fromOffset(17, 2)
+titleShadow.BackgroundTransparency = 1
+titleShadow.Text = "Polli Speed"
+titleShadow.Font = Enum.Font.GothamBold
+titleShadow.TextSize = 20
+titleShadow.TextColor3 = Color3.new(0,0,0)
+titleShadow.TextTransparency = 0.5
+titleShadow.TextXAlignment = Left
+
+local title = Instance.new("TextLabel", topBar)
+title.Size = UDim2.new(1, -20, 1, 0)
+title.Position = UDim2.fromOffset(15, 0)
+title.BackgroundTransparency = 1
+title.Text = "Polli Speed"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 20
+title.TextColor3 = Color3.new(1,1,1)
+title.TextXAlignment = Left
+
+--====================================================
+-- Content
+--====================================================
+local content = Instance.new("Frame", main)
+content.Size = UDim2.new(1, -30, 1, -70)
+content.Position = UDim2.fromOffset(15, 60)
+content.BackgroundTransparency = 1
+
+local toggle = Instance.new("TextButton", content)
+toggle.Size = UDim2.fromOffset(140, 45)
+toggle.Position = UDim2.new(0.5, -70, 0, 10)
+toggle.Text = "OFF"
+toggle.Font = Enum.Font.GothamBold
+toggle.TextSize = 18
+toggle.TextColor3 = Color3.new(1,1,1)
+toggle.BackgroundColor3 = Color3.fromRGB(60,60,70)
+toggle.BorderSizePixel = 0
+Instance.new("UICorner", toggle).CornerRadius = UDim.new(0, 12)
+
+--====================================================
+-- Speed Logic
+--====================================================
+local enabled = false
+local SPEED = 28
+local moveConn
+
+local function enable()
+    moveConn = RunService.Heartbeat:Connect(function()
+        if not enabled or humanoid.Health <= 0 then return end
+
+        local move = Vector3.zero
+        if UIS:IsKeyDown(Enum.KeyCode.W) then move += Vector3.new(0,0,-1) end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then move += Vector3.new(0,0,1) end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then move += Vector3.new(-1,0,0) end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then move += Vector3.new(1,0,0) end
+
+        if move.Magnitude > 0 then
+            local cam = workspace.CurrentCamera
+            local dir =
+                cam.CFrame.RightVector * move.X +
+                cam.CFrame.LookVector * -move.Z
+
+            HRP.AssemblyLinearVelocity = Vector3.new(
+                dir.X * SPEED,
+                HRP.AssemblyLinearVelocity.Y,
+                dir.Z * SPEED
+            )
+        end
+    end)
+end
+
+local function disable()
+    if moveConn then moveConn:Disconnect() end
+    HRP.AssemblyLinearVelocity = Vector3.zero
+end
+
+--====================================================
+-- Toggle Button
+--====================================================
+toggle.MouseButton1Click:Connect(function()
+    enabled = not enabled
+
+    if enabled then
+        toggle.Text = "ON"
+        tween(toggle, {BackgroundColor3 = Color3.fromRGB(80,255,120)}, 0.25)
+        enable()
+    else
+        toggle.Text = "OFF"
+        tween(toggle, {BackgroundColor3 = Color3.fromRGB(60,60,70)}, 0.25)
+        disable()
+    end
+end)
+
+--====================================================
+-- Cleanup
+--====================================================
+player.CharacterAdded:Connect(function(c)
+    character = c
+    humanoid = c:WaitForChild("Humanoid")
+    HRP = c:WaitForChild("HumanoidRootPart")
+    if enabled then enable() end
+end)
+
+player.CharacterRemoving:Connect(function()
+    disable()
+end)
